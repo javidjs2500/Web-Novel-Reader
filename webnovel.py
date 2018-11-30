@@ -53,7 +53,13 @@ async def bitcoin():
 @client.command(pass_context = True)
 @asyncio.coroutine
 async def read(ctx, url, interval = 10):
-    read.interval = interval
+    try:
+        read.interval = int(interval)
+        if interval < 0:
+            raise Exception
+    except:
+        await client.say("The interval must be a valid integer greater than 0. The interval has defaulted to 10 seconds. You can changed this by invoking the set_interval command.")
+        read.interval = 10
     read.paused = False
     read.stopped = False
     print(url)
@@ -74,7 +80,7 @@ async def read(ctx, url, interval = 10):
     @client.command()
     async def set_interval(time):
         try:
-            if int(time) < 1:
+            if int(time) < 0:
                 raise Exception
             else:
                 read.interval= int(time)
