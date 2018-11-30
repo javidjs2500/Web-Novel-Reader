@@ -6,10 +6,11 @@ import json
 from discord import Game
 from discord.ext.commands import Bot
 from discord import ChannelType
+from bs4 import BeautifulSoup
 
-BOT_PREFIX = ("?", "!")
+BOT_PREFIX = ("?", "!", "pls ")
 TOKEN = 'NTE3ODgzMjA0NDgxNTgxMDYw.DuIsLA.61SIijbhN9Uxw8SpBR9HbeZAgAI'
-
+TIME_INTERVAL = 5
 client = Bot(command_prefix=BOT_PREFIX)
 
 @client.command(name='8ball',
@@ -51,16 +52,75 @@ async def bitcoin():
 
 @client.command(pass_context = True)
 @asyncio.coroutine
-async def read(ctx):
-    print(ctx.message)
-    print(ctx.message.author)
-    print(ctx.message.channel.type)
+async def read(ctx, url, interval = 10):
+    read.interval = interval
+    read.paused = False
+    read.stopped = False
+    print(url)
+    print(interval)
+    
+    @client.command()
+    async def pause():
+        await client.say("Reading has been paused")
+        read.paused = True
+    @client.command()
+    async def stop():
+        await client.say("Reading has stopped")
+        read.stopped = True
+    @client.command()
+    async def resume():
+        await client.say("Reading has been resumed")
+        read.paused = False
+    @client.command()
+    async def set_interval(time):
+        try:
+            if int(time) < 1:
+                raise Exception
+            else:
+                read.interval= int(time)
+
+        except Exception:
+            await client.say("The time has to be a valid integer > 0!!!")
+        else:
+            await client.say("The time interval has been set to " + time + "!")
 
     if (ctx.message.channel.type != ChannelType.private):
         await client.say("Sorry, this command cannot be used here. Please message me privately!")
     else:
         await client.say("Let's start!")
-    
+    try:
+        async with aiohttp.ClientSession() as session:  # Async HTTP request
+            raw_response = await session.get(url)
+            response = await raw_response.text()
+            #response = json.loads(response)
+            soup = BeautifulSoup(response, features="html.parser")
+            # kill all script and style elements
+            for script in soup(["script", "style"]):
+                script.extract()    # rip it out
+
+            # get text
+            text = soup.get_text()
+
+            # break into lines and remove leading and trailing space on each
+            lines = (line.strip() for line in text.splitlines())
+            # break multi-headlines into a line each
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            # drop blank lines
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+
+            #print(text)
+            #print(response)
+
+        for i in text.split("\n"):
+            if read.stopped:
+                return
+            while read.paused:
+                await asyncio.sleep(1)
+            await client.say(str(i))
+            await asyncio.sleep(read.interval)
+    except ValueError:
+        await client.say("Please enter in a valid URL!")
+
 
 async def list_servers():
     await client.wait_until_ready()
