@@ -8,6 +8,7 @@ from discord.ext.commands import Bot
 from discord import ChannelType
 from bs4 import BeautifulSoup
 
+
 BOT_PREFIX = ("?", "!", "pls ")
 TOKEN = 'NTE3ODgzMjA0NDgxNTgxMDYw.DuIsLA.61SIijbhN9Uxw8SpBR9HbeZAgAI'
 TIME_INTERVAL = 5
@@ -94,38 +95,45 @@ async def read(ctx, url, interval = 10):
         await client.say("Sorry, this command cannot be used here. Please message me privately!")
     else:
         await client.say("Let's start!")
-    try:
-        async with aiohttp.ClientSession() as session:  # Async HTTP request
-            raw_response = await session.get(url)
-            response = await raw_response.text()
-            #response = json.loads(response)
-            soup = BeautifulSoup(response, features="html.parser")
-            # kill all script and style elements
-            for script in soup(["script", "style"]):
-                script.extract()    # rip it out
+    # try:
+    async with aiohttp.ClientSession() as session:  # Async HTTP request
+        raw_response = await session.get(url)
+        response = await raw_response.text()
+        #response = json.loads(response)
 
-            # get text
-            text = soup.get_text()
+        print(response)
+        soup = BeautifulSoup(response, features="html.parser")
+        print(soup.encode("utf-8"))
 
-            # break into lines and remove leading and trailing space on each
-            lines = (line.strip() for line in text.splitlines())
-            # break multi-headlines into a line each
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            # drop blank lines
-            text = '\n'.join(chunk for chunk in chunks if chunk)
+        # kill all script and style elements
+        for a in soup.findAll('a'):
+            a.decompose
 
-            #print(text)
-            #print(response)
+        for script in soup(["script", "style", "navbar"]):
+            script.extract()    # rip it out
 
-        for i in text.split("\n"):
-            if read.stopped:
-                return
-            while read.paused:
-                await asyncio.sleep(1)
-            await client.say(str(i))
-            await asyncio.sleep(read.interval)
-    except ValueError:
-        await client.say("Please enter in a valid URL!")
+        # get text
+        text = soup.get_text()
+        #print(text)
+        # break into lines and remove leading and trailing space on each
+        lines = (line.strip() for line in text.splitlines())
+        # break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+
+        #print(text)
+        #print(response)
+
+    for i in text.split("\n"):
+        if read.stopped:
+            return
+        while read.paused:
+            await asyncio.sleep(1)
+        await client.say(str(i))
+        await asyncio.sleep(read.interval)
+    # except ValueError:
+    #     await client.say("Please enter in a valid URL!")
 
 
 async def list_servers():
